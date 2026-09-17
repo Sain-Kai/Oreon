@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rag-platform
+  namespace: rag-platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: rag-platform
+  template:
+    metadata:
+      labels:
+        app: rag-platform
+    spec:
+      containers:
+        - name: rag-platform
+          # replace with your pushed image, e.g. ghcr.io/<you>/rag-platform:latest
+          image: ghcr.io/YOUR_GITHUB_USERNAME/rag-platform:latest
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef: { name: rag-platform-config }
+            - secretRef: { name: rag-platform-secrets }
+          readinessProbe:
+            httpGet: { path: /actuator/health, port: 8080 }
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /actuator/health, port: 8080 }
+            initialDelaySeconds: 45
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"

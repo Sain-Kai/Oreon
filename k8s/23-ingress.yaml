@@ -1,0 +1,22 @@
+# Requires an ingress controller (e.g. ingress-nginx) already installed on the cluster.
+# On kind/minikube this is a local demo host - add it to /etc/hosts pointing at the cluster IP.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rag-platform
+  namespace: rag-platform
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: rag-platform.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: rag-platform
+                port:
+                  number: 80

@@ -1,0 +1,92 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: rag-platform
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/ragdb}
+    username: ${DB_USERNAME:raguser}
+    password: ${DB_PASSWORD:ragpass}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate   # schema is owned by Flyway, not Hibernate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: 600000   # 10 minutes
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: rag-platform
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.ragplatform.*"
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+  ai:
+    openai:
+      api-key: ${NVIDIA_API_KEY}
+      base-url: https://integrate.api.nvidia.com   # no /v1 suffix - Spring AI appends it
+      chat:
+        options:
+          model: ${NVIDIA_CHAT_MODEL:meta/llama-3.1-70b-instruct}
+          max-tokens: 2048   # NVIDIA's API errors without this set explicitly
+    model:
+      embedding: none   # disabled here - wired manually in EmbeddingConfig against OpenRouter instead
+    vectorstore:
+      pgvector:
+        initialize-schema: false   # Flyway owns this table too - see V2 migration
+        dimensions: ${EMBEDDING_DIMENSIONS:2048}   # must match your chosen embedding model's output size
+
+# Custom app properties (not Spring AI's own openai.* namespace, to avoid bean clashes)
+app:
+  openrouter:
+    api-key: ${OPENROUTER_API_KEY}
+    base-url: https://openrouter.ai/api/v1
+    embedding-model: ${OPENROUTER_EMBEDDING_MODEL:nvidia/nemotron-3-embed-1b:free}
+    fallback-chat-model: ${OPENROUTER_FALLBACK_CHAT_MODEL:z-ai/glm-5.2:free}
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration-ms: 86400000   # 24h
+  rate-limit:
+    requests-per-minute: ${RATE_LIMIT_RPM:20}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+logging:
+  level:
+    com.ragplatform: INFO
+    org.springframework.ai: INFO
