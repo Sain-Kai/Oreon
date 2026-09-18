@@ -49,7 +49,9 @@ public class RedisRateLimiterFilter extends OncePerRequestFilter {
         }
 
         if (count != null && count > requestsPerMinute) {
-            response.setStatus(HttpServletResponse.SC_TOO_MANY_REQUESTS);
+            // 429 Too Many Requests - not defined as a constant on HttpServletResponse (it predates
+            // RFC 6585), so the literal code is used instead of a symbol that doesn't exist.
+            response.setStatus(429);
             response.setContentType("application/json");
             response.getWriter().write(
                     "{\"error\":\"Rate limit exceeded - max %d requests/minute per tenant\"}".formatted(requestsPerMinute));
